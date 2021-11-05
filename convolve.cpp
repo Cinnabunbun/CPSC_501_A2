@@ -5,9 +5,11 @@
 #include <string>
 #include <fstream>
 #include <iostream>
-#include <vector>
 #include "functions.h"
 #include <time.h>
+using namespace std;
+
+typedef std::complex<double> cd;
 
 // CONSTANTS ******************************
 
@@ -62,13 +64,232 @@ int main(int argc, char **argv)
     scaleSamples(IRSamples, IRSize);
 
     double *convolutionArray = new double[inputSize + IRSize - 1];
+    int outputSize = inputSize + IRSize - 1;
 
-    convolve(convolutionArray, inputSamples, IRSamples, inputSize, IRSize);
+    int fftInputExponent = findFFTInputExponent(outputSize);
+
+    int fftInputSize = int(pow(2, fftInputExponent));
+
+    padZeros(*inputSamples, fftInputSize);
+    padZeros(*IRSamples, fftInputSize);
+
+    std::vector<cd> complexInput(fftInputSize);
+    copy(inputSamples->begin(), inputSamples->end(), complexInput.begin());
 
     delete inputSamples;
+
+    std::vector<cd> complexIR(fftInputSize);
+    copy(IRSamples->begin(), IRSamples->end(), complexIR.begin());
+
     delete IRSamples;
 
-    writeWavFile(convolutionArray, inputSize + IRSize, 1, outputFilename);
+    std::vector<cd> inputFFT(fftInputSize);
+
+    fft(complexInput, inputFFT, fftInputExponent);
+
+    std::vector<cd> IRFFT(fftInputSize);
+
+    fft(complexIR, IRFFT, fftInputExponent);
+
+    complexInput.clear();
+    complexIR.clear();
+
+    std::vector<cd> convolutedFFT = multComplexArrays(inputFFT, IRFFT);
+
+    inputFFT.clear();
+    IRFFT.clear();
+
+    std::vector<cd> convolutedOutput(fftInputSize);
+
+    ifft(convolutedFFT, convolutedOutput, fftInputExponent);
+
+    convolutedFFT.clear();
+
+    convolutedOutput.resize(outputSize);
+
+    std::vector<double> doubleConvolutedOutput = complexArrayToDoubleArray(convolutedOutput);
+
+    convolutedOutput.clear();
+
+    scaleDownIFFTResult(doubleConvolutedOutput);
+
+    double *pOutput = doubleConvolutedOutput.data();
+
+    writeWavFile(pOutput, outputSize, 1, outputFilename);
+}
+
+/*
+Scales down the results of an inverse FFT by the size of the vector.
+*/
+void scaleDownIFFTResult(std::vector<double> &vec)
+{
+    int size = vec.size();
+    for (int i = 0; i < size; i++)
+    {
+        vec[i] = vec[i] / size;
+    }
+}
+
+/*
+Converts a complex array to the corresponding double array.
+*/
+std::vector<double> complexArrayToDoubleArray(std::vector<cd> complex)
+{
+    std::vector<double> real(complex.size());
+    for(int i = 0; i < real.size(); i++)
+    {
+        real[i] = complex[i].real();
+    }
+    return real;
+}
+
+/*
+Multiplies two arrays of complex numbers.
+*/
+std::vector<cd> multComplexArrays(std::vector<cd> &arr1, std::vector<cd> &arr2)
+{
+    std::vector<cd> output(arr1.size());
+    for(int i = 0; i < output.size(); i++)
+    {
+        output[i] = arr1[i] * arr2[i];
+    }
+    return output;
+}
+
+/*
+Calculates the parameter "log2n" used in the fft and ifft functions.
+*/
+int findFFTInputExponent(int outputSize)
+{
+    int n = 0;
+    while (int(pow(2, n)) < outputSize)
+    {
+        n++;
+    }
+    return n;
+}
+
+/*
+Pads a vector with zeros until the vector reaches the specified size.
+*/
+void padZeros(std::vector<double> &v, int newSize)
+{
+    while(v.size() < newSize)
+    {
+        v.push_back(0);
+    }
+}
+
+/*
+Performs FFT on vector a and stores the result in vector A.
+Implementation taken from https://www.geeksforgeeks.org/fast-fourier-transformation-poynomial-multiplication/
+NOTE: This function has been altered from its original implementation
+in order to demonstrate the effects of optimization.
+*/
+void fft(std::vector<cd> &a, std::vector<cd> &A, int log2n)
+{
+    int n = A.size();
+
+    // bit reversal of the given array
+    for (unsigned int i = 0; i < n; ++i)
+    {
+        int rev = bitReverse(i, log2n);
+        A[i] = a[rev];
+    }
+
+    // j is iota
+    const complex<double> J(0, 1);
+    for (int s = 1; s <= log2n; ++s)
+    {
+        int m = (int)pow(2, s); // 2 power s
+        int m2 = m >> 1; // m2 = m/2 -1
+        cd w(1, 0);
+
+        // principle root of nth complex
+        // root of unity.
+        cd wm = exp(J * (PI / m2));
+        for (int j = 0; j < m2; ++j)
+        {
+            for (int k = j; k < n; k += m)
+            {
+
+                // t = twiddle factor
+                cd t = w * A[k + m2];
+                cd u = A[k];
+
+                // similar calculating y[k]
+                A[k] = u + t;
+
+                // similar calculating y[k+n/2]
+                A[k + m2] = u - t;
+            }
+            w *= wm;
+        }
+    }
+}
+
+/*
+Performs inverse FFT on vector a and stores the result in vector A.
+Implementation taken from https://www.geeksforgeeks.org/fast-fourier-transformation-poynomial-multiplication/
+NOTE: This function has been altered from its original implementation
+in order to demonstrate the effects of optimization.
+*/
+void ifft(std::vector<cd> &a, std::vector<cd> &A, int log2n)
+{
+    int n = A.size();
+
+    // bit reversal of the given array
+    for (unsigned int i = 0; i < n; ++i)
+    {
+        int rev = bitReverse(i, log2n);
+        A[i] = a[rev];
+    }
+
+    // j is iota
+    const complex<double> J(0, 1);
+    for (int s = 1; s <= log2n; ++s)
+    {
+        int m = (int)pow(2, s); // 2 power s
+        int m2 = m >> 1; // m2 = m/2 -1
+        cd w(1, 0);
+
+        // principle root of nth complex
+        // root of unity.
+        cd wm = 1.0 / (exp(J * (PI / m2)));
+        for (int j = 0; j < m2; ++j)
+        {
+            for (int k = j; k < n; k += m)
+            {
+
+                // t = twiddle factor
+                cd t = w * A[k + m2];
+                cd u = A[k];
+
+                // similar calculating y[k]
+                A[k] = u + t;
+
+                // similar calculating y[k+n/2]
+                A[k + m2] = u - t;
+            }
+            w *= wm;
+        }
+    }
+}
+
+/*
+Performs bit reversal on the given int x.
+Implementation taken from https://www.geeksforgeeks.org/fast-fourier-transformation-poynomial-multiplication/
+*/
+unsigned int bitReverse(unsigned int x, int log2n)
+{
+    int n = 0;
+    for (int i = 0; i < log2n; i++)
+    {
+        n <<= 1;
+        n |= (x & 1);
+        x >>= 1;
+    }
+    return n;
 }
 
 /*
@@ -95,21 +316,6 @@ void scaleSamples(std::vector<double> *samples, int arraySize)
 }
 
 /*
-Convolves two arrays and stores the result in convolutionArray
-*/
-void convolve(double *convolutionArray, std::vector<double> *inputSamples, std::vector<double> *IRSamples, int inputSize, int IRSize)
-{
-    for (int i = 0; i < IRSize; i++)
-    {
-        double currentIR = IRSamples->at(i);
-        for (int j = 0; j < inputSize; j++)
-        {
-            convolutionArray[i + j] += currentIR * inputSamples->at(j);
-        }
-    }
-}
-
-/*
 Sets the file pointer to the data portion of a WAV file
 */
 void readWavFileHeader(int channels, FILE *infile)
@@ -121,7 +327,6 @@ void readWavFileHeader(int channels, FILE *infile)
 Reads the contents of a WAV file and stores them as doubles
 in a vector
 */
-
 std::vector<double> *readWavFile(int channels, char *filename)
 {
     FILE *infile = fopen(filename, "rb");

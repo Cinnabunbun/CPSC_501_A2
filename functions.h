@@ -2,10 +2,28 @@
 #define FUNCTIONS_H
 
 #include <vector>
+#include <complex>
+
+
+typedef std::complex<double> cd;
+
+void scaleDownIFFTResult(std::vector<double> &vec);
+
+std::vector<double> complexArrayToDoubleArray(std::vector<cd> complex);
+
+std::vector<cd> multComplexArrays(std::vector<cd> &arr1, std::vector<cd> &arr2);
+
+int findFFTInputExponent(int outputSize);
+
+void padZeros(std::vector<double> &v, int newSize);
+
+void fft(std::vector<cd> &a, std::vector<cd> &A, int log2n);
+
+void ifft(std::vector<cd> &a, std::vector<cd> &A, int log2n);
+
+unsigned int bitReverse(unsigned int x, int log2n);
 
 void scaleSamples(std::vector<double> *samples, int arraySize);
-
-void convolve(double *convolutionArray, std::vector<double> *inputSamples, std::vector<double> *IRSamples, int inputSize, int IRSize);
 
 std::vector<double>* readWavFile(int channels, char *filename);
 
