@@ -201,7 +201,7 @@ void fft(std::vector<cd> &a, std::vector<cd> &A, int log2n)
     const complex<double> J(0, 1);
     for (int s = 1; s <= log2n; ++s)
     {
-        int m = (int)pow(2, s); // 2 power s
+        int m = 1 << s;  // 2 power s
         int m2 = m >> 1; // m2 = m/2 -1
         cd w(1, 0);
 
@@ -249,7 +249,7 @@ void ifft(std::vector<cd> &a, std::vector<cd> &A, int log2n)
     const complex<double> J(0, 1);
     for (int s = 1; s <= log2n; ++s)
     {
-        int m = (int)pow(2, s); // 2 power s
+        int m = 1 << s;  // 2 power s
         int m2 = m >> 1; // m2 = m/2 -1
         cd w(1, 0);
 
