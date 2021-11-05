@@ -193,7 +193,14 @@ void fft(std::vector<cd> &a, std::vector<cd> &A, int log2n)
     // bit reversal of the given array
     for (unsigned int i = 0; i < n; ++i)
     {
-        int rev = bitReverse(i, log2n);
+        int x = i;
+        int rev = 0;
+        for (int j = 0; j < log2n; j++)
+        {
+            rev <<= 1;
+            rev |= (x & 1);
+            x >>= 1;
+        }
         A[i] = a[rev];
     }
 
@@ -241,7 +248,14 @@ void ifft(std::vector<cd> &a, std::vector<cd> &A, int log2n)
     // bit reversal of the given array
     for (unsigned int i = 0; i < n; ++i)
     {
-        int rev = bitReverse(i, log2n);
+        int x = i;
+        int rev = 0;
+        for (int j = 0; j < log2n; j++)
+        {
+            rev <<= 1;
+            rev |= (x & 1);
+            x >>= 1;
+        }
         A[i] = a[rev];
     }
 
@@ -274,22 +288,6 @@ void ifft(std::vector<cd> &a, std::vector<cd> &A, int log2n)
             w *= wm;
         }
     }
-}
-
-/*
-Performs bit reversal on the given int x.
-Implementation taken from https://www.geeksforgeeks.org/fast-fourier-transformation-poynomial-multiplication/
-*/
-unsigned int bitReverse(unsigned int x, int log2n)
-{
-    int n = 0;
-    for (int i = 0; i < log2n; i++)
-    {
-        n <<= 1;
-        n |= (x & 1);
-        x >>= 1;
-    }
-    return n;
 }
 
 /*

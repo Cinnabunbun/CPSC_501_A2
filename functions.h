@@ -21,8 +21,6 @@ void fft(std::vector<cd> &a, std::vector<cd> &A, int log2n);
 
 void ifft(std::vector<cd> &a, std::vector<cd> &A, int log2n);
 
-unsigned int bitReverse(unsigned int x, int log2n);
-
 void scaleSamples(std::vector<double> *samples, int arraySize);
 
 std::vector<double>* readWavFile(int channels, char *filename);
