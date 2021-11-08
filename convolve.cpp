@@ -330,13 +330,19 @@ std::vector<double> *readWavFile(int channels, char *filename)
     FILE *infile = fopen(filename, "rb");
     readWavFileHeader(1, infile);
     std::vector<double> *v = new std::vector<double>;
-    short int buff[1];
+    short int buff[256];
+    int samplesRead;
 
     while (!feof(infile))
     {
-        fread(buff, 2, 1, infile);
-        v->push_back((double)buff[0]);
+        samplesRead = fread(buff, 2, 256, infile);
+
+        for(int i = 0; i < samplesRead; i++)
+        {
+            v->push_back((double)buff[i]);
+        }
     }
+    v->push_back((double)buff[samplesRead - 1]);
     return v;
 }
 
