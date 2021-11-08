@@ -149,10 +149,20 @@ Multiplies two arrays of complex numbers.
 std::vector<cd> multComplexArrays(std::vector<cd> &arr1, std::vector<cd> &arr2)
 {
     std::vector<cd> output(arr1.size());
-    for(int i = 0; i < output.size(); i++)
+
+    int i;
+    
+    for(i = 0; i < output.size() - 1; i += 2)
+    {
+        output[i] = arr1[i] * arr2[i];
+        output[i+1] = arr1[i+1] * arr2[i+1];
+    }
+
+    if(i == output.size() - 1)
     {
         output[i] = arr1[i] * arr2[i];
     }
+
     return output;
 }
 
